@@ -1,0 +1,17 @@
+{
+  "name": "opencoop",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/backend",
+    "build": "npm run build --workspace=packages/backend",
+    "db:migrate": "npm run db:migrate --workspace=packages/backend",
+    "db:seed": "npm run db:seed --workspace=packages/backend",
+    "test": "npm run test --workspace=packages/backend"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

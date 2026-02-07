@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --coop-green: #1B5E20;
+  --coop-amber: #F57F17;
+  --coop-cream: #FFFDE7;
+}
+
+body {
+  @apply bg-coop-cream-light text-gray-900 antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-coop-green-900 text-white px-6 py-2.5 rounded-lg font-medium
+           hover:bg-coop-green-800 transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-coop-green-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-coop-amber-900 text-white px-6 py-2.5 rounded-lg font-medium
+           hover:bg-coop-amber-800 transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-coop-amber-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply border-2 border-coop-green-900 text-coop-green-900 px-6 py-2.5 rounded-lg font-medium
+           hover:bg-coop-green-50 transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-coop-green-500 focus:ring-offset-2;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-coop-green-100 p-6;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-coop-green-500 focus:border-transparent
+           placeholder:text-gray-400;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}
