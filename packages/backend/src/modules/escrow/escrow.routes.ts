@@ -40,7 +40,7 @@ router.get('/order/:orderId', authenticate, async (req: Request, res: Response) 
 
 router.post('/pool/settle-daily', authenticate, validate(settleDailySchema), async (req: Request, res: Response) => {
   try {
-    if (req.user!.role !== 'coop_admin' && req.user!.role !== 'customer') {
+    if (req.user!.role !== 'coop_admin') {
       res.status(403).json({ error: 'Admin only' });
       return;
     }

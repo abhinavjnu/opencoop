@@ -30,6 +30,7 @@ export default function CheckoutPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [estimatedDeliveryFee, setEstimatedDeliveryFee] = useState(5000);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -42,11 +43,20 @@ export default function CheckoutPage() {
       return;
     }
     setCart(JSON.parse(stored));
+
+    api.governance.parameters().then((params) => {
+      if (params) {
+        const baseFee = params.baseDeliveryFee ?? 4000;
+        const perKmRate = params.perKmRate ?? 1000;
+        // ~3km average distance estimate; actual fee calculated server-side on order creation
+        const estimatedDistanceKm = 3;
+        setEstimatedDeliveryFee(baseFee + perKmRate * estimatedDistanceKm);
+      }
+    }).catch(() => {});
   }, [isAuthenticated, router]);
 
   if (!cart) return null;
 
-  const estimatedDeliveryFee = 5000;
   const total = cart.subtotal + estimatedDeliveryFee + tip;
 
   async function handleOrder() {

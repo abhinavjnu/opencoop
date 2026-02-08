@@ -30,8 +30,9 @@ services:
       context: .
       dockerfile: packages/backend/Dockerfile
     ports:
-      - '3000:3000'
+      - '4000:4000'
     environment:
+      - PORT=4000
       - DATABASE_URL=postgresql://opencoop:opencoop@postgres:5432/opencoop
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-for-docker-compose-only

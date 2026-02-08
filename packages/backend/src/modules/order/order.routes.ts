@@ -43,7 +43,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     if (role === 'customer') {
       orderList = await orderService.getOrdersByCustomer(req.user!.userId);
     } else if (role === 'coop_admin') {
-      orderList = await orderService.getOrdersByCustomer(req.user!.userId);
+      orderList = await orderService.getAllOrders();
     } else {
       res.status(403).json({ error: 'Use role-specific endpoints' });
       return;

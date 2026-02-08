@@ -113,7 +113,7 @@ docker compose up -d postgres redis
 cp packages/backend/.env.example packages/backend/.env
 
 # 4. Run database migrations + seed data
-npm run -w packages/backend migrate
+npm run -w packages/backend db:migrate
 
 # 5. Start the backend
 npm run -w packages/backend dev

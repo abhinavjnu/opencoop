@@ -1,5 +1,5 @@
 import { db } from '../../db/index.js';
-import { orders, restaurants, menuItems } from '../../db/schema.js';
+import { orders, restaurants, menuItems, systemParameters } from '../../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { eventBus } from '../events/event-bus.js';
@@ -80,7 +80,7 @@ export const orderService = {
       input.deliveryAddress.lng,
     );
 
-    const deliveryFee = calculateDeliveryFee(distanceMeters);
+    const deliveryFee = await calculateDeliveryFee(distanceMeters);
     const total = subtotal + deliveryFee + input.tip;
 
     const orderId = uuid();
@@ -145,6 +145,11 @@ export const orderService = {
 
     logger.info({ orderId, total, customerId: input.customerId }, 'Order created with payment held');
 
+    const params = await getSystemParams();
+    const poolRate = (params?.poolContributionRate ?? 10) / 100;
+    const infraRate = (params?.infraFeeRate ?? 10) / 100;
+    const workerRate = 1 - poolRate - infraRate;
+
     return {
       orderId,
       subtotal,
@@ -154,9 +159,9 @@ export const orderService = {
       status: 'payment_held' as const,
       transparency: {
         restaurantReceives: subtotal,
-        workerReceives: Math.floor(deliveryFee * 0.8),
-        coopInfraFee: Math.floor(deliveryFee * 0.1),
-        poolContribution: Math.floor(deliveryFee * 0.1),
+        workerReceives: Math.floor(deliveryFee * workerRate),
+        coopInfraFee: Math.floor(deliveryFee * infraRate),
+        poolContribution: Math.floor(deliveryFee * poolRate),
       },
     };
   },
@@ -449,6 +454,14 @@ export const orderService = {
     return result[0] ?? null;
   },
 
+  async getAllOrders(limit = 100) {
+    return db
+      .select()
+      .from(orders)
+      .orderBy(orders.createdAt)
+      .limit(limit);
+  },
+
   async getOrdersByCustomer(customerId: string) {
     return db
       .select()
@@ -489,9 +502,20 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 }
 
-function calculateDeliveryFee(distanceMeters: number): number {
-  const baseFee = 4000;
-  const perKmRate = 1000;
+async function getSystemParams() {
+  const result = await db
+    .select()
+    .from(systemParameters)
+    .where(eq(systemParameters.id, 1))
+    .limit(1);
+
+  return result[0] ?? null;
+}
+
+async function calculateDeliveryFee(distanceMeters: number): Promise<number> {
+  const params = await getSystemParams();
+  const baseFee = params?.baseDeliveryFee ?? 4000;
+  const perKmRate = params?.perKmRate ?? 1000;
   const distanceKm = distanceMeters / 1000;
   return Math.round(baseFee + perKmRate * distanceKm);
 }

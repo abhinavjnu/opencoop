@@ -1,14 +1,14 @@
 /**
  * OpenCoop API Integration Tests
  *
- * Tests against a LIVE backend at http://localhost:3000.
+ * Tests against a LIVE backend at http://localhost:4000.
  * Requires: PostgreSQL + Redis + backend server running.
  *
  * Run: npx vitest run
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const BASE = 'http://localhost:3000';
+const BASE = process.env.TEST_API_BASE ?? 'http://localhost:4000';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 interface LoginResult {

@@ -15,6 +15,6 @@ WORKDIR /app/packages/backend
 
 RUN cp .env.example .env 2>/dev/null || true
 
-EXPOSE 3000
+EXPOSE 4000
 
 CMD ["npx", "tsx", "src/server.ts"]

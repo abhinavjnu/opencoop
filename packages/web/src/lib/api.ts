@@ -65,6 +65,10 @@ async function request<T>(
     throw new Error(body.error ?? `Request failed: ${res.status}`);
   }
 
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+
   return res.json();
 }
 
@@ -220,6 +224,9 @@ export const api = {
     },
     vote(proposalId: string, vote: 'for' | 'against' | 'abstain'): Promise<Vote> {
       return post(`/governance/proposals/${proposalId}/vote`, { vote });
+    },
+    tally(proposalId: string): Promise<{ proposalId: string; status: string; votesFor: number; votesAgainst: number; abstentions: number; quorumPercent: number; quorumReached: boolean }> {
+      return post(`/governance/proposals/${proposalId}/tally`);
     },
     parameters(): Promise<SystemParameters> {
       return get('/governance/parameters');
