@@ -1,5 +1,5 @@
 /**
- * OpenCoop Domain Events
+ * OpenFood Domain Events
  *
  * Every state change in the system is captured as an immutable event.
  * Events are hash-chained for tamper-evidence.

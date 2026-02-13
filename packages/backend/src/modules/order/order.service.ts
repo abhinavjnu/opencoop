@@ -1,10 +1,10 @@
 import { db } from '../../db/index.js';
-import { orders, restaurants, menuItems, systemParameters } from '../../db/schema.js';
+import { orders, restaurants, workers, menuItems, systemParameters } from '../../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { eventBus } from '../events/event-bus.js';
-import { ORDER_STATUS_TRANSITIONS } from '@opencoop/shared';
-import type { OrderStatus } from '@opencoop/shared';
+import { ORDER_STATUS_TRANSITIONS } from '@openfood/shared';
+import type { OrderStatus, UserRole } from '@openfood/shared';
 import { escrowService } from '../escrow/escrow.service.js';
 import { jobBoardService } from '../worker/jobboard.service.js';
 import pino from 'pino';
@@ -214,6 +214,16 @@ export const orderService = {
     const order = await this.getOrder(orderId);
     if (!order) throw new Error('Order not found');
 
+    const restaurant = await db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.userId, restaurantUserId))
+      .limit(1);
+
+    if (!restaurant[0] || restaurant[0].id !== order.restaurantId) {
+      throw new Error('Not authorized');
+    }
+
     if (!canTransition(order.status, 'restaurant_rejected')) {
       throw new Error(`Cannot reject order in status ${order.status}`);
     }
@@ -400,9 +410,14 @@ export const orderService = {
     return { orderId, status: 'delivered' };
   },
 
-  async cancelOrder(orderId: string, cancelledBy: string, role: 'customer' | 'restaurant' | 'worker' | 'system', reason: string) {
+  async cancelOrder(orderId: string, cancelledBy: string, role: 'customer' | 'restaurant' | 'worker' | 'coop_admin' | 'system', reason: string) {
     const order = await this.getOrder(orderId);
     if (!order) throw new Error('Order not found');
+
+    const canCancel = await this.canUserAccessOrder(orderId, cancelledBy, role);
+    if (!canCancel) {
+      throw new Error('Not authorized to cancel this order');
+    }
 
     if (!canTransition(order.status, 'cancelled')) {
       throw new Error(`Cannot cancel order in status ${order.status}`);
@@ -428,13 +443,15 @@ export const orderService = {
       await escrowService.refundPayment(orderId, reason);
     }
 
+    const eventRole = role === 'coop_admin' ? 'system' : role;
+
     await eventBus.emit({
       type: 'order.cancelled',
       aggregateId: orderId,
       aggregateType: 'order',
-      actor: { id: cancelledBy, role },
+      actor: { id: cancelledBy, role: eventRole },
       data: {
-        cancelledBy: role,
+        cancelledBy: eventRole,
         reason,
         refundAmount: order.total,
         cancelledAt: now.toISOString(),
@@ -452,6 +469,37 @@ export const orderService = {
       .limit(1);
 
     return result[0] ?? null;
+  },
+
+  async canUserAccessOrder(orderId: string, userId: string, role: UserRole | 'system'): Promise<boolean> {
+    if (role === 'coop_admin' || role === 'system') return true;
+
+    const order = await this.getOrder(orderId);
+    if (!order) return false;
+
+    if (role === 'customer') {
+      return order.customerId === userId;
+    }
+
+    if (role === 'restaurant') {
+      const restaurant = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.userId, userId))
+        .limit(1);
+      return restaurant[0]?.id === order.restaurantId;
+    }
+
+    if (role === 'worker') {
+      const worker = await db
+        .select()
+        .from(workers)
+        .where(eq(workers.userId, userId))
+        .limit(1);
+      return worker[0]?.id === order.workerId;
+    }
+
+    return false;
   },
 
   async getAllOrders(limit = 100) {

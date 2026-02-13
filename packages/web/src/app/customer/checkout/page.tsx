@@ -37,12 +37,16 @@ export default function CheckoutPage() {
       router.push('/login');
       return;
     }
-    const stored = sessionStorage.getItem('opencoop_cart');
+    const stored = sessionStorage.getItem('openfood_cart') ?? sessionStorage.getItem('opencoop_cart');
     if (!stored) {
       router.push('/customer/restaurants');
       return;
     }
     setCart(JSON.parse(stored));
+    if (!sessionStorage.getItem('openfood_cart')) {
+      sessionStorage.setItem('openfood_cart', stored);
+      sessionStorage.removeItem('opencoop_cart');
+    }
 
     api.governance.parameters().then((params) => {
       if (params) {
@@ -76,6 +80,7 @@ export default function CheckoutPage() {
         deliveryAddress: address,
         tip,
       });
+      sessionStorage.removeItem('openfood_cart');
       sessionStorage.removeItem('opencoop_cart');
       router.push(`/customer/orders/${order.orderId}`);
     } catch (err) {

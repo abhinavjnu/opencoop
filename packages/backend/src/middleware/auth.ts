@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
-import type { UserRole } from '@opencoop/shared';
+import type { UserRole } from '@openfood/shared';
 
 interface JwtPayload {
   userId: string;

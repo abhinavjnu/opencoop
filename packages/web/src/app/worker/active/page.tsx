@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { formatINR, formatDistance, formatDateTime } from '@/lib/utils';
+import { formatINR } from '@/lib/utils';
 import OrderTimeline from '@/components/OrderTimeline';
 import type { Order, Worker } from '@/lib/types';
 
@@ -17,12 +17,8 @@ export default function ActiveDeliveryPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [w, orders] = await Promise.all([api.workers.me(), api.orders.list()]);
+      const [w, active] = await Promise.all([api.workers.me(), api.workers.activeOrder()]);
       setWorker(w);
-
-      const active = orders.find(
-        (o) => o.workerId === w.userId && (o.status === 'worker_claimed' || o.status === 'picked_up'),
-      );
       setOrder(active ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
@@ -43,8 +39,9 @@ export default function ActiveDeliveryPage() {
     setError('');
     try {
       const location = worker.currentLocation ?? { lat: 12.9716, lng: 77.5946 };
-      const updated = await api.orders.pickup(order.id, location);
-      setOrder(updated);
+      await api.orders.pickup(order.id, location);
+      const refreshed = await api.orders.get(order.id);
+      setOrder(refreshed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to mark pickup');
     } finally {
@@ -58,12 +55,13 @@ export default function ActiveDeliveryPage() {
     setError('');
     try {
       const location = worker.currentLocation ?? { lat: 12.9716, lng: 77.5946 };
-      const updated = await api.orders.deliver(order.id, {
+      await api.orders.deliver(order.id, {
         workerLocation: location,
         signatureConfirmation: true,
       });
-      setOrder(updated);
-      if (updated.status === 'delivered' || updated.status === 'settled') {
+      const refreshed = await api.orders.get(order.id);
+      setOrder(refreshed);
+      if (refreshed.status === 'delivered' || refreshed.status === 'settled') {
         router.push('/worker/earnings');
       }
     } catch (err) {

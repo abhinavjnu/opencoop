@@ -1,4 +1,4 @@
-# OpenCoop: Decentralised Food Delivery Platform
+# OpenFood: Decentralised Food Delivery Platform
 
 ## Architecture Document v1.0
 
@@ -6,7 +6,7 @@
 
 ## Philosophy
 
-OpenCoop is a trust-minimised food delivery protocol designed around three axioms:
+OpenFood is a trust-minimised food delivery protocol designed around three axioms:
 
 1. **No extraction** — Restaurants pay zero commission. Workers earn dignified income.
 2. **No coercion** — Workers choose jobs freely. No hidden rankings or penalties.

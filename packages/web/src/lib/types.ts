@@ -1,7 +1,7 @@
 /**
- * OpenCoop Frontend Types
+ * OpenFood Frontend Types
  *
- * Duplicated from @opencoop/shared for frontend independence.
+ * Duplicated from @openfood/shared for frontend independence.
  * These match the backend API contract exactly.
  */
 

@@ -70,7 +70,7 @@ export default function RestaurantDetailPage() {
       return;
     }
     sessionStorage.setItem(
-      'opencoop_cart',
+      'openfood_cart',
       JSON.stringify({
         restaurantId: id,
         restaurantName: restaurant?.name,

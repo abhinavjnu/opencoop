@@ -13,6 +13,11 @@ router.post('/register', validate(registerSchema), async (req: Request, res: Res
   try {
     const { email, password, name, phone, role } = req.body;
 
+    if (role === 'coop_admin') {
+      res.status(403).json({ error: 'Admin registration is not allowed via public endpoint' });
+      return;
+    }
+
     const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (existing[0]) {
       res.status(409).json({ error: 'Email already registered' });

@@ -4,7 +4,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import Header from '@/components/Header';
 
 export const metadata: Metadata = {
-  title: 'OpenCoop — Cooperative Food Delivery',
+  title: 'OpenFood — Cooperative Food Delivery',
   description: 'Food delivery by the people, for the people. No commissions, transparent fees, democratic governance.',
 };
 
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <p className="text-sm">
-                  OpenCoop — A cooperative, not a corporation.
+                  OpenFood — A cooperative, not a corporation.
                 </p>
                 <p className="text-xs text-coop-green-400">
                   Every transaction is auditable. Every fee is transparent. Every voice counts.

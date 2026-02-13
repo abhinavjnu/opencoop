@@ -1,5 +1,5 @@
 import { db } from '../../db/index.js';
-import { escrowRecords, orders, poolState, poolLedger } from '../../db/schema.js';
+import { escrowRecords, orders, poolState, poolLedger, workers, systemParameters } from '../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { eventBus } from '../events/event-bus.js';
@@ -43,7 +43,9 @@ export const escrowService = {
       .limit(1);
 
     if (!order[0]) throw new Error('Order not found');
-    if (!order[0].workerId) throw new Error('No worker assigned');
+    const orderRow = order[0];
+    if (!orderRow.workerId) throw new Error('No worker assigned');
+    const workerId = orderRow.workerId;
 
     const escrow = await db
       .select()
@@ -52,14 +54,31 @@ export const escrowService = {
       .limit(1);
 
     if (!escrow[0]) throw new Error('Escrow record not found');
-    if (escrow[0].status !== 'authorized') throw new Error(`Cannot settle escrow in status ${escrow[0].status}`);
+    const escrowRow = escrow[0];
+    if (escrowRow.status === 'settled') {
+      return {
+        restaurantPayout: escrowRow.restaurantPayout ?? 0,
+        workerPayout: escrowRow.workerPayout ?? 0,
+        coopFee: escrowRow.coopFee ?? 0,
+        poolContribution: escrowRow.poolContribution ?? 0,
+        tip: escrowRow.tipAmount ?? 0,
+      };
+    }
 
-    const restaurantPayout = order[0].subtotal;
-    const deliveryFee = order[0].deliveryFee;
-    const tip = order[0].tip;
+    if (escrowRow.status !== 'authorized') throw new Error(`Cannot settle escrow in status ${escrowRow.status}`);
 
-    const poolContributionRate = 10;
-    const infraFeeRate = 10;
+    const restaurantPayout = orderRow.subtotal;
+    const deliveryFee = orderRow.deliveryFee;
+    const tip = orderRow.tip;
+
+    const params = await db
+      .select()
+      .from(systemParameters)
+      .where(eq(systemParameters.id, 1))
+      .limit(1);
+
+    const poolContributionRate = params[0]?.poolContributionRate ?? 10;
+    const infraFeeRate = params[0]?.infraFeeRate ?? 10;
 
     const poolContribution = Math.floor(deliveryFee * poolContributionRate / 100);
     const coopFee = Math.floor(deliveryFee * infraFeeRate / 100);
@@ -67,65 +86,73 @@ export const escrowService = {
     const workerPayout = workerDeliveryPay + tip;
 
     const now = new Date();
+    const restaurantTransferId = `tr_sim_rest_${uuid().slice(0, 8)}`;
+    const workerTransferId = `tr_sim_wrkr_${uuid().slice(0, 8)}`;
 
-    await db
-      .update(escrowRecords)
-      .set({
-        status: 'settled',
-        restaurantPayout,
-        workerPayout,
-        coopFee,
-        poolContribution,
-        tipAmount: tip,
-        restaurantTransferId: `tr_sim_rest_${uuid().slice(0, 8)}`,
-        workerTransferId: `tr_sim_wrkr_${uuid().slice(0, 8)}`,
-        settledAt: now,
-        updatedAt: now,
-      })
-      .where(eq(escrowRecords.id, escrow[0].id));
+    const settlement = await db.transaction(async (tx) => {
+      await tx
+        .update(escrowRecords)
+        .set({
+          status: 'settled',
+          restaurantPayout,
+          workerPayout,
+          coopFee,
+          poolContribution,
+          tipAmount: tip,
+          restaurantTransferId,
+          workerTransferId,
+          settledAt: now,
+          updatedAt: now,
+        })
+        .where(eq(escrowRecords.id, escrowRow.id));
 
-    await db
-      .update(orders)
-      .set({ status: 'settled', settledAt: now, updatedAt: now })
-      .where(eq(orders.id, orderId));
+      await tx
+        .update(orders)
+        .set({ status: 'settled', settledAt: now, updatedAt: now })
+        .where(eq(orders.id, orderId));
 
-    await db.execute(sql`
-      UPDATE pool_state
-      SET balance = balance + ${poolContribution},
-          total_contributions = total_contributions + ${poolContribution},
-          last_updated = NOW()
-      WHERE id = 1
-    `);
+      await tx.execute(sql`
+        UPDATE pool_state
+        SET balance = balance + ${poolContribution},
+            total_contributions = total_contributions + ${poolContribution},
+            last_updated = NOW()
+        WHERE id = 1
+      `);
 
-    const currentPool = await db.select().from(poolState).where(eq(poolState.id, 1)).limit(1);
-    const poolBalance = currentPool[0]?.balance ?? 0;
+      const currentPool = await tx.select().from(poolState).where(eq(poolState.id, 1)).limit(1);
+      const poolBalance = currentPool[0]?.balance ?? 0;
 
-    await db.insert(poolLedger).values({
-      transactionType: 'contribution',
-      amount: poolContribution,
-      balanceAfter: Number(poolBalance),
-      orderId,
-      description: `Pool contribution from order ${orderId}`,
+      await tx.insert(poolLedger).values({
+        transactionType: 'contribution',
+        amount: poolContribution,
+        balanceAfter: Number(poolBalance),
+        orderId,
+        description: `Pool contribution from order ${orderId}`,
+      });
+
+      const today = new Date().toISOString().split('T')[0]!;
+      await tx.execute(sql`
+        INSERT INTO worker_daily_earnings (worker_id, date, deliveries_completed, delivery_fees, tips, total_earnings)
+        VALUES (${workerId}, ${today}, 1, ${workerDeliveryPay}, ${tip}, ${workerPayout})
+        ON CONFLICT (worker_id, date)
+        DO UPDATE SET
+          deliveries_completed = worker_daily_earnings.deliveries_completed + 1,
+          delivery_fees = worker_daily_earnings.delivery_fees + ${workerDeliveryPay},
+          tips = worker_daily_earnings.tips + ${tip},
+          total_earnings = worker_daily_earnings.total_earnings + ${workerPayout},
+          updated_at = NOW()
+      `);
+
+      await tx
+        .update(workers)
+        .set({
+          totalDeliveries: sql`${workers.totalDeliveries} + 1`,
+          updatedAt: now,
+        })
+        .where(eq(workers.id, workerId));
+
+      return { poolBalance: Number(poolBalance) };
     });
-
-    const today = new Date().toISOString().split('T')[0]!;
-    await db.execute(sql`
-      INSERT INTO worker_daily_earnings (worker_id, date, deliveries_completed, delivery_fees, tips, total_earnings)
-      VALUES (${order[0].workerId}, ${today}, 1, ${workerDeliveryPay}, ${tip}, ${workerPayout})
-      ON CONFLICT (worker_id, date)
-      DO UPDATE SET
-        deliveries_completed = worker_daily_earnings.deliveries_completed + 1,
-        delivery_fees = worker_daily_earnings.delivery_fees + ${workerDeliveryPay},
-        tips = worker_daily_earnings.tips + ${tip},
-        total_earnings = worker_daily_earnings.total_earnings + ${workerPayout},
-        updated_at = NOW()
-    `);
-
-    await db.execute(sql`
-      UPDATE workers
-      SET total_deliveries = total_deliveries + 1, updated_at = NOW()
-      WHERE id = ${order[0].workerId}
-    `);
 
     await eventBus.emit({
       type: 'order.settled',
@@ -138,34 +165,34 @@ export const escrowService = {
         coopInfraFee: coopFee,
         poolContribution,
         tip,
-        paymentCaptureId: escrow[0].paymentIntentId,
+        paymentCaptureId: escrowRow.paymentIntentId,
         settledAt: now.toISOString(),
       },
     });
 
     await eventBus.emit({
       type: 'payment.restaurant_transferred',
-      aggregateId: escrow[0].id,
+      aggregateId: escrowRow.id,
       aggregateType: 'payment',
       actor: { id: 'system', role: 'system' },
       data: {
         orderId,
-        restaurantId: order[0].restaurantId,
+        restaurantId: orderRow.restaurantId,
         amount: restaurantPayout,
-        transferId: `tr_sim_rest_${uuid().slice(0, 8)}`,
+        transferId: restaurantTransferId,
       },
     });
 
     await eventBus.emit({
       type: 'payment.worker_transferred',
-      aggregateId: escrow[0].id,
+      aggregateId: escrowRow.id,
       aggregateType: 'payment',
       actor: { id: 'system', role: 'system' },
       data: {
         orderId,
-        workerId: order[0].workerId,
+        workerId,
         amount: workerPayout,
-        transferId: `tr_sim_wrkr_${uuid().slice(0, 8)}`,
+        transferId: workerTransferId,
         includesTip: tip > 0,
         tipAmount: tip,
       },
@@ -173,13 +200,13 @@ export const escrowService = {
 
     await eventBus.emit({
       type: 'payment.pool_contribution',
-      aggregateId: escrow[0].id,
+      aggregateId: escrowRow.id,
       aggregateType: 'payment',
       actor: { id: 'system', role: 'system' },
       data: {
         orderId,
         amount: poolContribution,
-        poolBalanceAfter: Number(poolBalance),
+        poolBalanceAfter: settlement.poolBalance,
       },
     });
 

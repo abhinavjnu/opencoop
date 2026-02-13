@@ -1,5 +1,5 @@
 {
-  "name": "opencoop",
+  "name": "openfood",
   "private": true,
   "workspaces": [
     "packages/*"

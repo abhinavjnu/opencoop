@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: opencoop
-      POSTGRES_PASSWORD: opencoop
-      POSTGRES_DB: opencoop
+      POSTGRES_USER: openfood
+      POSTGRES_PASSWORD: openfood
+      POSTGRES_DB: openfood
     ports:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U opencoop']
+      test: ['CMD-SHELL', 'pg_isready -U openfood']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -33,7 +33,7 @@ services:
       - '4000:4000'
     environment:
       - PORT=4000
-      - DATABASE_URL=postgresql://opencoop:opencoop@postgres:5432/opencoop
+      - DATABASE_URL=postgresql://openfood:openfood@postgres:5432/openfood
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-for-docker-compose-only
       - NODE_ENV=development

@@ -1,5 +1,5 @@
 /**
- * OpenCoop Shared Types
+ * OpenFood Shared Types
  *
  * Domain types shared between backend and frontend.
  * These represent the public API contract.

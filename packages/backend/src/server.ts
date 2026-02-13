@@ -16,6 +16,8 @@ import { reputationRoutes } from './modules/reputation/reputation.routes.js';
 import { disputeRoutes } from './modules/reputation/dispute.routes.js';
 import { initializeWebSocket } from './modules/realtime/socket.js';
 import { authLimiter, writeLimiter, readLimiter } from './middleware/rate-limit.js';
+import { requestContext } from './middleware/request-context.js';
+import { idempotency } from './middleware/idempotency.js';
 
 const logger = pino({ name: 'server' });
 const app = express();
@@ -28,18 +30,20 @@ app.use(cors({
 }));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
+app.use(requestContext(logger));
 
 // Trust proxy for correct IP extraction behind reverse proxy
 app.set('trust proxy', 1);
 
 // Global read rate limiter — 200 req/min per IP
 app.use(readLimiter);
+app.use(idempotency);
 
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     version: '0.1.0',
-    name: 'OpenCoop',
+    name: 'OpenFood',
     philosophy: 'No extraction. No coercion. No opacity.',
   });
 });
@@ -66,7 +70,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 const io = initializeWebSocket(httpServer);
 
 httpServer.listen(config.port, () => {
-  logger.info(`OpenCoop server running on port ${config.port}`);
+  logger.info(`OpenFood server running on port ${config.port}`);
   logger.info(`Environment: ${config.nodeEnv}`);
   logger.info('WebSocket: enabled');
   logger.info('API endpoints:');

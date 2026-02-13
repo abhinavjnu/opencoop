@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { disputeService } from './dispute.service.js';
-import type { DisputeType, DisputeResolution } from '@opencoop/shared';
+import type { DisputeType, DisputeResolution } from '@openfood/shared';
 import { validate, raiseDisputeSchema, resolveDisputeSchema } from '../../middleware/validation.js';
 
 const router = Router();

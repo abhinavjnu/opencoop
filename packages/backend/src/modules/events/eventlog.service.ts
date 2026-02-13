@@ -3,7 +3,18 @@ import { db } from '../../db/index.js';
 import { eventLog } from '../../db/schema.js';
 import { v4 as uuid } from 'uuid';
 import { eq, and, desc } from 'drizzle-orm';
-import type { BaseEvent } from '@opencoop/shared';
+import type { BaseEvent } from '@openfood/shared';
+
+const MAX_APPEND_RETRIES = 3;
+
+function isAggregateVersionConflict(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+
+  const dbCode = (err as Error & { code?: string }).code;
+  if (dbCode === '23505') return true;
+
+  return err.message.includes('event_log_aggregate_version');
+}
 
 /**
  * Deterministic JSON serialization with sorted keys.
@@ -38,53 +49,62 @@ export async function appendEvent(
     data: Record<string, unknown>;
   },
 ): Promise<BaseEvent> {
-  const lastEvent = await db
-    .select({ hash: eventLog.hash, version: eventLog.version })
-    .from(eventLog)
-    .where(
-      and(
-        eq(eventLog.aggregateId, event.aggregateId),
-        eq(eventLog.aggregateType, event.aggregateType),
-      ),
-    )
-    .orderBy(desc(eventLog.version))
-    .limit(1);
+  for (let attempt = 1; attempt <= MAX_APPEND_RETRIES; attempt++) {
+    const lastEvent = await db
+      .select({ hash: eventLog.hash, version: eventLog.version })
+      .from(eventLog)
+      .where(
+        and(
+          eq(eventLog.aggregateId, event.aggregateId),
+          eq(eventLog.aggregateType, event.aggregateType),
+        ),
+      )
+      .orderBy(desc(eventLog.version))
+      .limit(1);
 
-  const previousHash = lastEvent[0]?.hash ?? null;
-  const version = (lastEvent[0]?.version ?? 0) + 1;
-  const occurredAt = new Date().toISOString();
-  const id = uuid();
+    const previousHash = lastEvent[0]?.hash ?? null;
+    const version = (lastEvent[0]?.version ?? 0) + 1;
+    const occurredAt = new Date().toISOString();
+    const id = uuid();
 
-  const hash = computeEventHash(event.type, event.data, previousHash, occurredAt);
+    const hash = computeEventHash(event.type, event.data, previousHash, occurredAt);
 
-  const storedEvent: BaseEvent = {
-    id,
-    type: event.type,
-    aggregateId: event.aggregateId,
-    aggregateType: event.aggregateType,
-    version,
-    occurredAt,
-    actor: event.actor,
-    data: event.data,
-    previousHash,
-    hash,
-  };
+    const storedEvent: BaseEvent = {
+      id,
+      type: event.type,
+      aggregateId: event.aggregateId,
+      aggregateType: event.aggregateType,
+      version,
+      occurredAt,
+      actor: event.actor,
+      data: event.data,
+      previousHash,
+      hash,
+    };
 
-  await db.insert(eventLog).values({
-    id,
-    eventType: event.type,
-    aggregateId: event.aggregateId,
-    aggregateType: event.aggregateType,
-    version,
-    actorId: event.actor.id,
-    actorRole: event.actor.role,
-    data: event.data,
-    previousHash,
-    hash,
-    occurredAt: new Date(occurredAt),
-  });
+    try {
+      await db.insert(eventLog).values({
+        id,
+        eventType: event.type,
+        aggregateId: event.aggregateId,
+        aggregateType: event.aggregateType,
+        version,
+        actorId: event.actor.id,
+        actorRole: event.actor.role,
+        data: event.data,
+        previousHash,
+        hash,
+        occurredAt: new Date(occurredAt),
+      });
 
-  return storedEvent;
+      return storedEvent;
+    } catch (err) {
+      const shouldRetry = isAggregateVersionConflict(err) && attempt < MAX_APPEND_RETRIES;
+      if (!shouldRetry) throw err;
+    }
+  }
+
+  throw new Error('Failed to append event after retries');
 }
 
 export async function getEventsByAggregate(

@@ -3,7 +3,7 @@ import { proposals, votes, users, systemParameters } from '../../db/schema.js';
 import { eq, and, or, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { eventBus } from '../events/event-bus.js';
-import type { ProposalCategory } from '@opencoop/shared';
+import type { ProposalCategory } from '@openfood/shared';
 import pino from 'pino';
 
 const logger = pino({ name: 'governance-service' });

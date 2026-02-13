@@ -1,13 +1,13 @@
 import Redis from 'ioredis';
 import { config } from '../../config/index.js';
-import type { JobBoardEntry } from '@opencoop/shared';
+import type { JobBoardEntry } from '@openfood/shared';
 import pino from 'pino';
 
 const logger = pino({ name: 'jobboard-service' });
 
-const JOB_BOARD_KEY = 'opencoop:jobboard';
-const JOB_DETAIL_PREFIX = 'opencoop:job:';
-const JOB_CLAIM_PREFIX = 'opencoop:claim:';
+const JOB_BOARD_KEY = 'openfood:jobboard';
+const JOB_DETAIL_PREFIX = 'openfood:job:';
+const JOB_CLAIM_PREFIX = 'openfood:claim:';
 
 let redis: Redis;
 

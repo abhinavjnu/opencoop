@@ -28,8 +28,9 @@ export default function OrderDetailPage() {
     if (!order) return;
     setCancelling(true);
     try {
-      const updated = await api.orders.cancel(order.id, 'Customer cancelled');
-      setOrder(updated);
+      await api.orders.cancel(order.id, 'Customer cancelled');
+      const refreshed = await api.orders.get(order.id);
+      setOrder(refreshed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel');
     } finally {

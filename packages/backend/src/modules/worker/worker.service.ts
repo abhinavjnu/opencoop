@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { eventBus } from '../events/event-bus.js';
 import { jobBoardService } from './jobboard.service.js';
-import type { VehicleType } from '@opencoop/shared';
+import type { VehicleType } from '@openfood/shared';
 import pino from 'pino';
 
 const logger = pino({ name: 'worker-service' });

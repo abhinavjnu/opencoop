@@ -3,6 +3,7 @@ import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate, workerRegisterSchema, workerOnlineSchema, workerOfflineSchema, workerLocationSchema } from '../../middleware/validation.js';
 import { workerService } from './worker.service.js';
 import { poolService } from '../escrow/pool.service.js';
+import { orderService } from '../order/order.service.js';
 
 const router = Router();
 
@@ -73,6 +74,23 @@ router.get('/jobs', authenticate, authorize('worker'), async (_req: Request, res
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: 'Failed to get jobs' });
+  }
+});
+
+router.get('/orders/active', authenticate, authorize('worker'), async (req: Request, res: Response) => {
+  try {
+    const worker = await workerService.getWorkerByUserId(req.user!.userId);
+    if (!worker) {
+      res.status(404).json({ error: 'Worker profile not found' });
+      return;
+    }
+
+    const orders = await orderService.getOrdersByWorker(worker.id);
+    const activeOrder = orders.find((o) => o.status === 'worker_claimed' || o.status === 'picked_up') ?? null;
+
+    res.json(activeOrder);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get active order' });
   }
 });
 

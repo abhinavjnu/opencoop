@@ -3,7 +3,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { config } from '../../config/index.js';
 import { eventBus } from '../events/event-bus.js';
-import type { DomainEvent } from '@opencoop/shared';
+import type { DomainEvent } from '@openfood/shared';
 import pino from 'pino';
 
 const logger = pino({ name: 'socket' });
@@ -84,7 +84,7 @@ function sanitizeEvent(event: DomainEvent): Record<string, unknown> {
 export function initializeWebSocket(httpServer: HttpServer): Server {
   const io = new Server(httpServer, {
     cors: {
-      origin: '*',
+      origin: config.nodeEnv === 'production' ? config.corsOrigin : true,
       methods: ['GET', 'POST'],
     },
     pingTimeout: 20000,

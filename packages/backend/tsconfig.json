@@ -19,7 +19,7 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": false,
     "paths": {
-      "@opencoop/shared": ["../shared/src/index.ts"]
+      "@openfood/shared": ["../shared/src/index.ts"]
     },
     "rootDir": "../.."
   },

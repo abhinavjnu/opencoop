@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      const stored = localStorage.getItem('opencoop_user');
+      const stored = localStorage.getItem('openfood_user') ?? localStorage.getItem('opencoop_user');
       const user = stored ? JSON.parse(stored) : null;
       const redirect = user?.role ? ROLE_REDIRECTS[user.role] ?? '/' : '/';
       router.push(redirect);
@@ -88,7 +88,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600">
-          New to OpenCoop?{' '}
+          New to OpenFood?{' '}
           <Link href="/register" className="text-coop-green-700 font-medium hover:underline">
             Create an account
           </Link>

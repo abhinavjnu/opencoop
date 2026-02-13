@@ -5,7 +5,7 @@ export const config = {
   nodeEnv: process.env['NODE_ENV'] ?? 'development',
 
   database: {
-    url: process.env['DATABASE_URL'] ?? 'postgresql://opencoop:opencoop@localhost:5432/opencoop',
+    url: process.env['DATABASE_URL'] ?? 'postgresql://openfood:openfood@localhost:5432/openfood',
   },
 
   redis: {
@@ -24,3 +24,17 @@ export const config = {
     webhookSecret: process.env['STRIPE_WEBHOOK_SECRET'] ?? 'whsec_placeholder',
   },
 } as const;
+
+if (config.nodeEnv === 'production') {
+  if (config.jwt.secret === 'dev-secret-change-in-production') {
+    throw new Error('JWT_SECRET must be set in production');
+  }
+
+  if (config.stripe.secretKey === 'sk_test_placeholder') {
+    throw new Error('STRIPE_SECRET_KEY must be set in production');
+  }
+
+  if (config.stripe.webhookSecret === 'whsec_placeholder') {
+    throw new Error('STRIPE_WEBHOOK_SECRET must be set in production');
+  }
+}

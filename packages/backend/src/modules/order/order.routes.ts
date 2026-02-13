@@ -24,11 +24,19 @@ router.post('/', authenticate, authorize('customer'), validate(createOrderSchema
 
 router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
-    const order = await orderService.getOrder(req.params['id']!);
+    const orderId = req.params['id']!;
+    const order = await orderService.getOrder(orderId);
     if (!order) {
       res.status(404).json({ error: 'Order not found' });
       return;
     }
+
+    const canAccess = await orderService.canUserAccessOrder(orderId, req.user!.userId, req.user!.role);
+    if (!canAccess) {
+      res.status(403).json({ error: 'Not authorized to access this order' });
+      return;
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ error: 'Failed to get order' });
@@ -151,7 +159,7 @@ router.post('/:id/cancel', authenticate, validate(cancelOrderSchema), async (req
     const result = await orderService.cancelOrder(
       req.params['id']!,
       req.user!.userId,
-      req.user!.role as 'customer' | 'restaurant' | 'worker',
+      req.user!.role,
       req.body.reason ?? 'No reason provided',
     );
     res.json(result);

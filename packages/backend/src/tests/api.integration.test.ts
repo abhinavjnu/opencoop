@@ -1,5 +1,5 @@
 /**
- * OpenCoop API Integration Tests
+ * OpenFood API Integration Tests
  *
  * Tests against a LIVE backend at http://localhost:4000.
  * Requires: PostgreSQL + Redis + backend server running.

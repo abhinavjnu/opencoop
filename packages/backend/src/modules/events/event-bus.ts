@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import type { DomainEvent, EventType } from '@opencoop/shared';
+import type { DomainEvent, EventType } from '@openfood/shared';
 import { appendEvent } from './eventlog.service.js';
 import pino from 'pino';
 

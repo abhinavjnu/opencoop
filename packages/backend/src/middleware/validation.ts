@@ -35,7 +35,7 @@ export const registerSchema = z.object({
   password: z.string().min(6).max(128),
   name: z.string().min(1).max(255),
   phone: z.string().min(1).max(20),
-  role: z.enum(['customer', 'restaurant', 'worker', 'coop_admin']),
+  role: z.enum(['customer', 'restaurant', 'worker']),
 });
 
 export const loginSchema = z.object({
@@ -80,7 +80,8 @@ export const cancelOrderSchema = z.object({
 });
 
 export const workerRegisterSchema = z.object({
-  userId: z.string().uuid(),
+  email: z.string().email(),
+  password: z.string().min(6).max(128),
   name: z.string().min(1).max(255),
   phone: z.string().min(1).max(20),
   vehicleType: z.enum(['bicycle', 'motorcycle', 'car', 'walk']),

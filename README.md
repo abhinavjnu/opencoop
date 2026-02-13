@@ -1,4 +1,4 @@
-# OpenCoop — Decentralised, Non-Extractive Food Delivery
+# OpenFood — Decentralised, Non-Extractive Food Delivery
 
 A cooperative food delivery platform where restaurants pay **zero commission**, workers earn **dignified income with daily minimum guarantees**, and every rupee is **publicly auditable**.
 
@@ -6,11 +6,11 @@ Inspired by Bitcoin's trust-minimised design: open protocols over closed platfor
 
 ---
 
-## Why OpenCoop?
+## Why OpenFood?
 
-Platform capitalism extracts 25–35% commission from restaurants, suppresses worker earnings through algorithmic coercion, and hides money flows behind opaque systems. OpenCoop replaces this with:
+Platform capitalism extracts 25–35% commission from restaurants, suppresses worker earnings through algorithmic coercion, and hides money flows behind opaque systems. OpenFood replaces this with:
 
-| Platform Model | OpenCoop Model |
+| Platform Model | OpenFood Model |
 |---|---|
 | 25–35% restaurant commission | **0% commission** — restaurants receive 100% of menu price |
 | Algorithmic job assignment + penalties | **Open job board** — workers see ALL jobs, reject unlimited, zero penalties |
@@ -103,7 +103,7 @@ All values (baseFee, perKmRate) are system parameters governed by cooperative vo
 ```bash
 # 1. Clone and install
 git clone <repo>
-cd opencoop
+cd openfood
 npm install
 
 # 2. Start infrastructure (PostgreSQL + Redis)
@@ -230,7 +230,7 @@ All endpoints are prefixed with `/api`.
 ## Project Structure
 
 ```
-opencoop/
+openfood/
 ├── docs/ARCHITECTURE.md         # Full architecture document
 ├── docker-compose.yml            # PostgreSQL, Redis, backend
 ├── packages/

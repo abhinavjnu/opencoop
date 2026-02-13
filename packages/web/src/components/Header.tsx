@@ -40,7 +40,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <span className="text-coop-amber-400">⬡</span>
-            <span>OpenCoop</span>
+            <span>OpenFood</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">

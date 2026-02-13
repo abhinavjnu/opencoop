@@ -1,5 +1,5 @@
 import { db } from '../../db/index.js';
-import { ratings, workers, restaurants } from '../../db/schema.js';
+import { ratings, workers, restaurants, orders } from '../../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { eventBus } from '../events/event-bus.js';
@@ -23,8 +23,62 @@ export const reputationService = {
       throw new Error('Score must be an integer between 1 and 5');
     }
 
-    if (input.raterId === input.targetId) {
-      throw new Error('Cannot rate yourself');
+    const order = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, input.orderId))
+      .limit(1);
+
+    if (!order[0]) {
+      throw new Error('Order not found');
+    }
+
+    const orderRow = order[0];
+
+    const targetIsValid =
+      (input.targetRole === 'restaurant' && input.targetId === orderRow.restaurantId)
+      || (input.targetRole === 'worker' && orderRow.workerId !== null && input.targetId === orderRow.workerId);
+
+    if (!targetIsValid) {
+      throw new Error('Target must be a participant in the order');
+    }
+
+    if (input.raterRole === 'customer') {
+      if (orderRow.customerId !== input.raterId) {
+        throw new Error('Only the order customer can submit customer ratings');
+      }
+    }
+
+    if (input.raterRole === 'restaurant') {
+      const restaurant = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.userId, input.raterId))
+        .limit(1);
+
+      if (!restaurant[0] || restaurant[0].id !== orderRow.restaurantId) {
+        throw new Error('Only the order restaurant can submit restaurant ratings');
+      }
+
+      if (input.targetRole !== 'worker') {
+        throw new Error('Restaurant can only rate the assigned worker');
+      }
+    }
+
+    if (input.raterRole === 'worker') {
+      const worker = await db
+        .select()
+        .from(workers)
+        .where(eq(workers.userId, input.raterId))
+        .limit(1);
+
+      if (!worker[0] || worker[0].id !== orderRow.workerId) {
+        throw new Error('Only the assigned worker can submit worker ratings');
+      }
+
+      if (input.targetRole !== 'restaurant') {
+        throw new Error('Worker can only rate the order restaurant');
+      }
     }
 
     const ratingId = uuid();

@@ -1,11 +1,11 @@
 import { db } from '../../db/index.js';
-import { disputes, orders } from '../../db/schema.js';
+import { disputes, orders, restaurants, workers } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { eventBus } from '../events/event-bus.js';
 import { escrowService } from '../escrow/escrow.service.js';
 import pino from 'pino';
-import type { DisputeType, DisputeResolution } from '@opencoop/shared';
+import type { DisputeType, DisputeResolution } from '@openfood/shared';
 
 const logger = pino({ name: 'dispute-service' });
 
@@ -34,9 +34,39 @@ export const disputeService = {
 
     if (!order[0]) throw new Error('Order not found');
 
+    const orderRow = order[0];
+
+    let actorRole: 'customer' | 'restaurant' | 'worker' = 'customer';
+
+    if (input.raisedBy === orderRow.customerId) {
+      actorRole = 'customer';
+    } else {
+      const restaurant = await db
+        .select()
+        .from(restaurants)
+        .where(eq(restaurants.userId, input.raisedBy))
+        .limit(1);
+
+      if (restaurant[0] && restaurant[0].id === orderRow.restaurantId) {
+        actorRole = 'restaurant';
+      } else {
+        const worker = await db
+          .select()
+          .from(workers)
+          .where(eq(workers.userId, input.raisedBy))
+          .limit(1);
+
+        if (worker[0] && worker[0].id === orderRow.workerId) {
+          actorRole = 'worker';
+        } else {
+          throw new Error('Only order participants can raise disputes');
+        }
+      }
+    }
+
     const allowedStatuses = ['delivered', 'settled'];
-    if (!allowedStatuses.includes(order[0].status)) {
-      throw new Error(`Cannot dispute order in status ${order[0].status}. Must be delivered or settled.`);
+    if (!allowedStatuses.includes(orderRow.status)) {
+      throw new Error(`Cannot dispute order in status ${orderRow.status}. Must be delivered or settled.`);
     }
 
     const existing = await db
@@ -69,7 +99,7 @@ export const disputeService = {
       type: 'order.disputed',
       aggregateId: input.orderId,
       aggregateType: 'order',
-      actor: { id: input.raisedBy, role: 'customer' },
+      actor: { id: input.raisedBy, role: actorRole },
       data: {
         disputedBy: input.raisedBy,
         disputeType: input.disputeType,
